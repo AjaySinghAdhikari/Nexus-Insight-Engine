@@ -26,7 +26,8 @@
 - **Analogical Reasoning**: Goes beyond LLM pattern matching by forcing cross-domain synthesis.
 - **50+ Scientific Domains**: Hardcoded ontology including Glaciology, Cybernetics, Mycorrhizal Networks, and more.
 - **Deep Research**: Real-time academic search via ArXiv and web intelligence via Tavily.
-- **Visual Workflow**: Real-time progress monitoring through a premium Streamlit dashboard.
+- **Visual Workflow**: Real-time progress monitoring through a premium "Deep Space" web interface.
+- **SSE Streaming**: Live updates from the LangGraph agent directly to the browser.
 - **Strategic Scoring**: Automatically ranks solutions based on Novelty vs. Feasibility.
 
 ## Tech Stack
@@ -49,8 +50,11 @@
    ```
 4. **Launch NEXUS**:
    ```bash
-   streamlit run app/streamlit_app.py
+   python server.py
    ```
+5. **Access the UI**: Open your browser and navigate to `http://localhost:8000`.
+
+*(Note: The legacy Streamlit dashboard is still available in `app/streamlit_app.py`)*
 
 ## Example Inputs
 1. **Input**: "How do we stop misinformation spreading?"
