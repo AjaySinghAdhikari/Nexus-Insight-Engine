@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS | Cross-Domain Insight Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000008;
+            --indigo: #6366f1;
+            --violet: #a78bfa;
+            --white: #ffffff;
+            --gray: #333333;
+            --font-head: 'Syne', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--white);
+            font-family: var(--font-mono);
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* --- Canvas Layers --- */
+        #starfield, #cursor-trail {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #cursor-trail {
+            z-index: 9999;
+        }
+
+        /* --- Layout --- */
+        main {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- Header --- */
+        header {
+            text-align: center;
+            margin-bottom: 6rem;
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .title {
+            font-family: var(--font-head);
+            font-size: 9rem;
+            font-weight: 800;
+            letter-spacing: -6px;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .title span {
+            display: inline-block;
+            text-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .tagline {
+            font-size: 0.75rem;
+            letter-spacing: 4px;
+            color: var(--indigo);
+            margin-bottom: 2rem;
+        }
+
+        .description {
+            max-width: 600px;
+            margin: 0 auto;
+            font-size: 1rem;
+            opacity: 0.7;
+            line-height: 1.6;
+        }
+
+        /* --- Input Section --- */
+        #input-section {
+            width: 100%;
+            max-width: 800px;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .textarea-container {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        textarea {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--gray);
+            color: var(--white);
+            font-family: var(--font-head);
+            font-size: 2rem;
+            padding: 1rem 0;
+            resize: none;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            border-color: var(--indigo);
+            box-shadow: 0 4px 20px -10px var(--indigo);
+        }
+
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 3rem;
+        }
+
+        .pill {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--gray);
+            border-radius: 20px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .pill:hover {
+            border-color: var(--indigo);
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--indigo);
+        }
+
+        .run-btn-container {
+            display: flex;
+            justify-content: center;
+        }
+
+        .run-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 1px solid var(--indigo);
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        .run-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--white);
+            transition: fill 0.3s ease;
+        }
+
+        .run-btn::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            border: 1px solid transparent;
+            border-top-color: var(--indigo);
+            border-radius: 50%;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+        }
+
+        .run-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .run-btn:hover::before {
+            opacity: 1;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- Pipeline Section --- */
+        #pipeline-section {
+            width: 100%;
+            height: 400px;
+            position: absolute;
+            top: 65%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            opacity: 0;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease;
+        }
+
+        #pipeline-svg {
+            width: 100%;
+            height: 100%;
+            max-width: 1000px;
+        }
+
+        .pipeline-status {
+            margin-top: 2rem;
+            font-family: var(--font-head);
+            font-style: italic;
+            font-size: 1.5rem;
+            color: var(--violet);
+            text-align: center;
+        }
+
+        /* --- Results Section --- */
+        #results-section {
+            width: 100%;
+            display: none;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .structural-essence {
+            font-family: 'Georgia', serif;
+            font-style: italic;
+            font-size: 2.5rem;
+            text-align: center;
+            margin: 6rem 0;
+            line-height: 1.4;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .domain-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 6rem;
+        }
+
+        .domain-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--gray);
+            padding: 2rem;
+            border-radius: 4px;
+            transform: translateY(30px);
+            opacity: 0;
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .domain-card.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .progress-ring {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-ring circle {
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .progress-ring .bg { stroke: var(--gray); }
+        .progress-ring .bar {
+            stroke: var(--indigo);
+            stroke-dasharray: 251.2;
+            stroke-dashoffset: 251.2;
+            transition: stroke-dashoffset 1.5s ease-in-out;
+        }
+
+        .insight-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-bottom: 6rem;
+        }
+
+        .insight-card {
+            border: 1px solid var(--gray);
+            background: transparent;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .insight-header {
+            padding: 1.5rem 2rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .insight-header h3 {
+            font-family: var(--font-head);
+            font-size: 1.2rem;
+        }
+
+        .insight-header .domain-label {
+            font-size: 0.7rem;
+            color: var(--indigo);
+            border: 1px solid var(--indigo);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .insight-content {
+            max-height: 0;
+            padding: 0 2rem;
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .insight-card.active .insight-content {
+            max-height: 1000px;
+            padding: 2rem;
+            opacity: 1;
+            border-top: 1px solid var(--gray);
+        }
+
+        .score-bar-container {
+            margin: 1rem 0;
+        }
+
+        .score-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .score-bar {
+            height: 2px;
+            background: var(--gray);
+            width: 100%;
+            position: relative;
+        }
+
+        .score-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: var(--indigo);
+            width: 0;
+            transition: width 1s ease;
+        }
+
+        /* --- Full Report --- */
+        .full-report {
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.8;
+            opacity: 0.9;
+        }
+
+        .full-report h2 { font-family: var(--font-head); font-size: 2.5rem; margin: 3rem 0 1.5rem; }
+        .full-report h3 { font-family: var(--font-head); font-size: 1.5rem; margin: 2rem 0 1rem; color: var(--indigo); }
+        .full-report p { margin-bottom: 1.5rem; }
+        .full-report ul, .full-report ol { margin-bottom: 1.5rem; padding-left: 1.5rem; }
+        .full-report li { margin-bottom: 0.5rem; }
+        .full-report strong { color: var(--violet); }
+
+        /* --- Mobile --- */
+        @media (max-width: 768px) {
+            .title { font-size: 4rem; letter-spacing: -2px; }
+            #pipeline-section { height: auto; position: relative; top: auto; left: auto; transform: none; padding: 2rem 0; }
+            .structural-essence { font-size: 1.5rem; }
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <canvas id="starfield"></canvas>
+    <canvas id="cursor-trail"></canvas>
+
+    <main>
+        <header id="main-header">
+            <h1 class="title">
+                <span>N</span><span>E</span><span>X</span><span>U</span><span>S</span>
+            </h1>
+            <div class="tagline">CROSS-DOMAIN INSIGHT ENGINE</div>
+            <p class="description">
+                Decompose complex problems into their structural essence and bridge scientific domains to engineer non-obvious solutions.
+            </p>
+        </header>
+
+        <section id="input-section">
+            <div class="textarea-container">
+                <textarea id="problem-input" placeholder="What problem do you want NEXUS to solve?" rows="2"></textarea>
+            </div>
+            <div class="examples" id="example-pills">
+                <span class="pill" data-text="How to prevent urban traffic congestion using biology?">Urban Traffic & Biology</span>
+                <span class="pill" data-text="Designing self-healing materials using linguistics principles.">Self-healing & Linguistics</span>
+                <span class="pill" data-text="Reducing carbon emissions through mycology networks.">Carbon & Mycology</span>
+                <span class="pill" data-text="Improving cybersecurity using human immune system logic.">Cybersecurity & Immunity</span>
+                <span class="pill" data-text="Optimizing energy grids based on slime mold growth patterns.">Energy & Slime Mold</span>
+                <span class="pill" data-text="Sustainable packaging inspired by crustacean shells.">Packaging & Crustaceans</span>
+            </div>
+            <div class="run-btn-container">
+                <button class="run-btn" id="run-research">
+                    <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </section>
+
+        <section id="pipeline-section">
+            <svg id="pipeline-svg" viewBox="0 0 1000 300">
+                <!-- Path will be generated by JS -->
+                <path id="pipeline-arc" d="" fill="none" stroke="#333" stroke-width="1" stroke-dasharray="5,5"/>
+                <g id="pipeline-nodes"></g>
+            </svg>
+            <div class="pipeline-status" id="pipeline-status">Initializing Core...</div>
+        </section>
+
+        <section id="results-section">
+            <div class="structural-essence" id="structural-essence"></div>
+            <div class="domain-cards" id="domain-cards"></div>
+            <div class="insight-cards" id="insight-cards"></div>
+            <div class="full-report" id="full-report"></div>
+        </section>
+    </main>
+
+    <script>
+        /* --- Config & State --- */
+        const state = {
+            researching: false,
+            currentStep: 'start',
+            steps: ['decompose', 'map_domains', 'hunt_solutions', 'build_bridges', 'synthesize'],
+            nodePositions: []
+        };
+
+        /* --- Canvas: Starfield --- */
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        let stars = [];
+
+        function initStars() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            stars = [];
+            for (let i = 0; i < 200; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 1.5,
+                    opacity: Math.random(),
+                    speed: Math.random() * 0.05 + 0.02,
+                    twinkle: Math.random() * 0.02
+                });
+            }
+        }
+
+        function drawStars() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffffff';
+            stars.forEach(s => {
+                s.opacity += s.twinkle;
+                if (s.opacity > 1 || s.opacity < 0) s.twinkle *= -1;
+                ctx.globalAlpha = s.opacity;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                ctx.fill();
+                s.y -= s.speed;
+                if (s.y < 0) s.y = canvas.height;
+            });
+            requestAnimationFrame(drawStars);
+        }
+
+        /* --- Canvas: Cursor Trail --- */
+        const trailCanvas = document.getElementById('cursor-trail');
+        const tctx = trailCanvas.getContext('2d');
+        let trail = [];
+
+        window.addEventListener('mousemove', e => {
+            trail.push({ x: e.clientX, y: e.clientY, life: 1 });
+        });
+
+        function drawTrail() {
+            tctx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+            trail.forEach((p, i) => {
+                p.life -= 0.025;
+                if (p.life <= 0) {
+                    trail.splice(i, 1);
+                    return;
+                }
+                tctx.beginPath();
+                tctx.arc(p.x, p.y, p.life * 4, 0, Math.PI * 2);
+                tctx.fillStyle = `rgba(99, 102, 241, ${p.life * 0.3})`;
+                tctx.fill();
+            });
+            requestAnimationFrame(drawTrail);
+        }
+
+        /* --- Pipeline Visualization --- */
+        const pipelineSvg = document.getElementById('pipeline-svg');
+        const pipelineNodesG = document.getElementById('pipeline-nodes');
+        const pipelineArc = document.getElementById('pipeline-arc');
+
+        function initPipeline() {
+            const width = 1000;
+            const height = 300;
+            const nodes = state.steps;
+            const count = nodes.length;
+            state.nodePositions = [];
+
+            // Draw curved arc (Bezier) - adjusted for lower curve
+            const d = `M 100,220 Q 500,100 900,220`;
+            pipelineArc.setAttribute('d', d);
+
+            // Calculate points along the quadratic curve
+            // Q(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
+            const P0 = { x: 100, y: 220 };
+            const P1 = { x: 500, y: 100 };
+            const P2 = { x: 900, y: 220 };
+
+            nodes.forEach((name, i) => {
+                const t = i / (count - 1);
+                const x = Math.pow(1 - t, 2) * P0.x + 2 * (1 - t) * t * P1.x + Math.pow(t, 2) * P2.x;
+                const y = Math.pow(1 - t, 2) * P0.y + 2 * (1 - t) * t * P1.y + Math.pow(t, 2) * P2.y;
+                
+                state.nodePositions.push({ x, y, name });
+
+                const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                g.setAttribute('id', `node-${name}`);
+                g.setAttribute('class', 'pipeline-node-g');
+
+                // Outer glow (ripple)
+                const ripple = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                ripple.setAttribute('cx', x);
+                ripple.setAttribute('cy', y);
+                ripple.setAttribute('r', 20);
+                ripple.setAttribute('fill', 'none');
+                ripple.setAttribute('stroke', 'var(--indigo)');
+                ripple.setAttribute('stroke-width', '1');
+                ripple.setAttribute('class', 'ripple');
+                ripple.style.opacity = '0';
+                g.appendChild(ripple);
+
+                // Main circle
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute('cx', x);
+                circle.setAttribute('cy', y);
+                circle.setAttribute('r', 12);
+                circle.setAttribute('fill', '#222');
+                circle.setAttribute('stroke', '#444');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('class', 'main-circle');
+                g.appendChild(circle);
+
+                // Label
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute('x', x);
+                text.setAttribute('y', y + 30);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('fill', '#666');
+                text.setAttribute('font-size', '10');
+                text.setAttribute('font-family', 'JetBrains Mono');
+                text.textContent = name.replace('_', ' ').toUpperCase();
+                g.appendChild(text);
+
+                pipelineNodesG.appendChild(g);
+            });
+        }
+
+        function updatePipeline(step) {
+            state.steps.forEach((name, i) => {
+                const g = document.getElementById(`node-${name}`);
+                const circle = g.querySelector('.main-circle');
+                const ripple = g.querySelector('.ripple');
+                const text = g.querySelector('text');
+                const index = state.steps.indexOf(step);
+
+                if (i < index) {
+                    // Completed
+                    circle.setAttribute('fill', 'var(--white)');
+                    circle.setAttribute('stroke', 'var(--white)');
+                    circle.style.filter = 'drop-shadow(0 0 5px white)';
+                    ripple.style.animation = 'none';
+                    ripple.style.opacity = '0';
+                    text.setAttribute('fill', 'var(--white)');
+                } else if (i === index) {
+                    // Active
+                    circle.setAttribute('fill', 'var(--indigo)');
+                    circle.setAttribute('stroke', 'var(--indigo)');
+                    circle.style.filter = 'drop-shadow(0 0 10px var(--indigo))';
+                    ripple.style.opacity = '1';
+                    ripple.style.animation = 'ripple-anim 1.5s infinite';
+                    text.setAttribute('fill', 'var(--indigo)');
+                } else {
+                    // Inactive
+                    circle.setAttribute('fill', '#222');
+                    circle.setAttribute('stroke', '#444');
+                    circle.style.filter = 'none';
+                    ripple.style.animation = 'none';
+                    ripple.style.opacity = '0';
+                    text.setAttribute('fill', '#666');
+                }
+            });
+        }
+
+        // Add CSS for ripple animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple-anim {
+                0% { r: 12; opacity: 1; }
+                100% { r: 40; opacity: 0; }
+            }
+            .pipeline-node-g { transition: all 0.5s ease; }
+        `;
+        document.head.appendChild(style);
+
+        /* --- Markdown Parser --- */
+        function parseMarkdown(md) {
+            if (!md) return '';
+            let html = md
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+                .replace(/\*(.*)\*/gim, '<em>$1</em>')
+                .replace(/^\- (.*$)/gim, '<li>$1</li>')
+                .replace(/^\d\. (.*$)/gim, '<li>$1</li>')
+                .replace(/\n\n/gim, '</p><p>')
+                .replace(/\n/gim, '<br>');
+            
+            // Wrap lists
+            html = html.replace(/<li>/g, '<ul><li>').replace(/<\/li>/g, '</li></ul>');
+            html = html.replace(/<\/ul><ul>/g, '');
+            
+            return `<p>${html}</p>`;
+        }
+
+        /* --- Typewriter Animation --- */
+        async function typewriter(element, text, speed = 30) {
+            element.innerHTML = '';
+            for (let char of text) {
+                element.innerHTML += char;
+                await new Promise(r => setTimeout(r, speed));
+            }
+        }
+
+        /* --- Research Logic --- */
+        const inputSection = document.getElementById('input-section');
+        const pipelineSection = document.getElementById('pipeline-section');
+        const resultsSection = document.getElementById('results-section');
+        const runBtn = document.getElementById('run-research');
+        const problemInput = document.getElementById('problem-input');
+        const pipelineStatus = document.getElementById('pipeline-status');
+
+        runBtn.addEventListener('click', startResearch);
+
+        async function startResearch() {
+            const problem = problemInput.value.trim();
+            if (!problem) return;
+
+            state.researching = true;
+            
+            // Transitions
+            inputSection.style.opacity = '0';
+            inputSection.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+                inputSection.classList.add('hidden');
+                pipelineSection.style.display = 'flex';
+                setTimeout(() => pipelineSection.style.opacity = '1', 50);
+            }, 500);
+
+            // Start SSE
+            try {
+                const response = await fetch('/api/research', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ problem })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = JSON.parse(line.substring(6));
+                            handleEvent(data);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("SSE Error:", err);
+                pipelineStatus.textContent = "Error connecting to Nexus...";
+            }
+        }
+
+        function handleEvent(data) {
+            console.log("Event:", data);
+            if (data.step === 'complete') {
+                showResults(data.state);
+            } else {
+                updatePipeline(data.step);
+                pipelineStatus.textContent = data.status;
+            }
+        }
+
+        async function showResults(res) {
+            // Fade out pipeline
+            pipelineSection.style.opacity = '0';
+            setTimeout(() => {
+                pipelineSection.style.display = 'none';
+                resultsSection.style.display = 'block';
+                setTimeout(() => resultsSection.style.opacity = '1', 50);
+                renderData(res);
+            }, 800);
+        }
+
+        async function renderData(res) {
+            // 1. Structural Essence
+            const essenceText = res.decomposed?.essence || "The structural essence of this problem lies in cross-domain resonance.";
+            await typewriter(document.getElementById('structural-essence'), `"${essenceText}"`);
+
+            // 2. Domain Cards
+            const domainContainer = document.getElementById('domain-cards');
+            res.matched_domains?.forEach((d, i) => {
+                const card = document.createElement('div');
+                card.className = 'domain-card';
+                const score = d.similarity_score || Math.floor(Math.random() * 40) + 60;
+                card.innerHTML = `
+                    <div class="progress-ring">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="bg" cx="50" cy="50" r="40"/>
+                            <circle class="bar" cx="50" cy="50" r="40" style="stroke-dashoffset: ${251.2 - (251.2 * score / 100)}"/>
+                        </svg>
+                    </div>
+                    <h3>${d.domain_name}</h3>
+                    <p style="font-size: 0.8rem; opacity: 0.7; margin-top: 1rem;">${d.relevance_reason || 'Bridging structural parallels.'}</p>
+                `;
+                domainContainer.appendChild(card);
+                setTimeout(() => card.classList.add('visible'), i * 200);
+            });
+
+            // 3. Insight Cards
+            const insightContainer = document.getElementById('insight-cards');
+            res.bridges?.forEach((b, i) => {
+                const card = document.createElement('div');
+                card.className = 'insight-card';
+                card.innerHTML = `
+                    <div class="insight-header">
+                        <h3>${b.hypothesis_title || 'Bridge Hypothesis'}</h3>
+                        <span class="domain-label">${b.source_domain || 'Scientific Domain'}</span>
+                    </div>
+                    <div class="insight-content">
+                        <p>${b.core_insight}</p>
+                        <div class="score-bar-container">
+                            <span class="score-label">Novelty</span>
+                            <div class="score-bar"><div class="score-fill" style="width: ${b.novelty_score * 10 || 80}%"></div></div>
+                        </div>
+                        <div class="score-bar-container">
+                            <span class="score-label">Feasibility</span>
+                            <div class="score-bar"><div class="score-fill" style="width: ${b.feasibility_score * 10 || 70}%"></div></div>
+                        </div>
+                    </div>
+                `;
+                card.querySelector('.insight-header').onclick = () => card.classList.toggle('active');
+                insightContainer.appendChild(card);
+            });
+
+            // 4. Full Report
+            document.getElementById('full-report').innerHTML = parseMarkdown(res.final_report);
+        }
+
+        /* --- Initialization --- */
+        window.addEventListener('resize', initStars);
+        initStars();
+        drawStars();
+        
+        trailCanvas.width = window.innerWidth;
+        trailCanvas.height = window.innerHeight;
+        drawTrail();
+
+        initPipeline();
+
+        // Example Pills
+        document.getElementById('example-pills').addEventListener('click', e => {
+            if (e.target.classList.contains('pill')) {
+                problemInput.value = e.target.dataset.text;
+            }
+        });
+    </script>
+</body>
+</html>
